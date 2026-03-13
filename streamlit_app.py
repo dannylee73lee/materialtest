@@ -255,7 +255,7 @@ else:
         if total_stock > 0:
             pie_df = pd.DataFrame({'구분': ['신품','구품'], '수량': [total_new, total_used]})
             fig = px.pie(pie_df, names='구분', values='수량',
-                         color_discrete_sequence=['#93C5FD','#F59E0B'], hole=0.45)
+                         color_discrete_sequence=['#5B9BD5','#F59E0B'], hole=0.45)
             fig.update_traces(textinfo='label+percent', textfont_size=13)
             fig.update_layout(**LAYOUT, margin=MARGIN_SM, legend=dict(font=dict(color='#3D3530')))
             st.plotly_chart(fig, use_container_width=True)
@@ -272,7 +272,7 @@ else:
             biz['비율'] = (biz['재고'] / total_biz * 100).round(1)
             biz['label'] = biz['비율'].apply(lambda x: f'{x}%')
             fig = go.Figure()
-            fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#93C5FD')
+            fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#5B9BD5')
             fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B',
                         text=biz['label'], textposition='outside', textfont=dict(size=11))
             fig.update_layout(barmode='stack', **LAYOUT, margin=dict(t=30,b=20),
