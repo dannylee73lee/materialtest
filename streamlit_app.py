@@ -338,22 +338,16 @@ else:
 
     with st.container():
         st.markdown('<div class="section-title">📦 재고 TOP 10 자재</div>', unsafe_allow_html=True)
-        top_base = (df_raw[df_raw['재고'] > 0].groupby('자재명')[['신품','구품','재고']].sum()
-                    .reset_index().sort_values('재고', ascending=True).tail(10))
-        if not top_base.empty:
-            top_base['자재명_short'] = top_base['자재명'].str[:25]
-            fig = go.Figure()
-            fig.add_bar(y=top_base['자재명_short'], x=top_base['신품'], name='신품',
-                        orientation='h', marker_color='#5B9BD5',
-                        text=top_base['신품'].apply(lambda v: f'{v:,}' if v > 0 else ''),
-                        textposition='inside', insidetextanchor='middle')
-            fig.add_bar(y=top_base['자재명_short'], x=top_base['구품'], name='구품',
-                        orientation='h', marker_color='#F59E0B',
-                        text=top_base['재고'].apply(lambda v: f'{v:,}'),
-                        textposition='outside')
-            fig.update_layout(barmode='stack', **LAYOUT, margin=dict(t=20,b=20,r=70),
+        top = (df_raw[df_raw['재고'] > 0].groupby('자재명')['재고'].sum()
+               .reset_index().sort_values('재고', ascending=True).tail(10))
+        if not top.empty:
+            top['자재명_short'] = top['자재명'].str[:25]
+            fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
+                         color='재고', color_continuous_scale='YlOrBr', text='재고')
+            fig.update_traces(texttemplate='%{text:,}', textposition='outside')
+            fig.update_layout(**LAYOUT, margin=dict(t=20,b=20,r=60),
                               xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
-                              legend=dict(font=dict(color='#3D3530')))
+                              coloraxis_showscale=False)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("재고 데이터가 없습니다.")
