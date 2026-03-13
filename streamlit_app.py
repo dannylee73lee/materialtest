@@ -44,7 +44,8 @@ TAB_CONFIG = [
         "col_map": {
             "대분류":"대분류","중분류":"중분류","소분류":"소분류",
             "자재코드":"자재코드","품명":"품명","제조사":"제조사",
-            "신품":"신품","구품":"구품","재고":"재고"
+            "이월_신품":"이월_신품","이월_구품":"이월_구품","이월(재고)":"이월(재고)",
+            "신품":"신품","구품":"구품","재고":"재고","전체":"전체"
         },
         "filter2": "중분류",
     },
@@ -54,7 +55,8 @@ TAB_CONFIG = [
         "col_map": {
             "대분류":"대분류","소분류":"소분류",
             "자재코드":"자재코드","품명":"품명","제조사":"제조사",
-            "신품":"신품","구품":"구품","재고":"재고"
+            "이월_신품":"이월_신품","이월_구품":"이월_구품","이월(재고)":"이월(재고)",
+            "신품":"신품","구품":"구품","재고":"재고","전체":"전체"
         },
         "filter2": "소분류",
     },
@@ -63,10 +65,11 @@ TAB_CONFIG = [
         "sheet":   "RRU, MiBos, W, 설비물자",
         "col_map": {
             "대분류":"대분류","중분류":"중분류",
-            "세분류":"소분류",       # 세분류 → 소분류
+            "세분류":"소분류",
             "자재코드":"자재코드","품명":"품명",
-            "제조업체":"제조사",     # 제조업체 → 제조사
-            "신품":"신품","구품":"구품","재고":"재고"
+            "제조업체":"제조사",
+            "이월_신품":"이월_신품","이월_구품":"이월_구품","이월(재고)":"이월(재고)",
+            "신품":"신품","구품":"구품","재고":"재고","전체":"전체"
         },
         "filter2": "중분류",
     },
@@ -201,7 +204,18 @@ if not all_dfs:
 else:
 
     df_raw = pd.concat(all_dfs, ignore_index=True)
-    qty_df = df_raw.groupby('자재코드')[['신품','구품','재고']].sum().reset_index()
+    # 현재 수불부: 신품/구품/재고
+    current_raw = df_raw[df_raw['자재분류'] != '이월'] if '자재분류' in df_raw.columns else df_raw
+    carry_raw   = df_raw[df_raw['자재분류'] == '이월'] if '자재분류' in df_raw.columns else pd.DataFrame(columns=df_raw.columns)
+
+    qty_current = current_raw.groupby('자재코드')[['신품','구품','재고']].sum().reset_index()
+    qty_carry   = carry_raw.groupby('자재코드')[['신품','구품','재고']].sum().reset_index()
+    qty_carry   = qty_carry.rename(columns={'신품':'이월_신품','구품':'이월_구품','재고':'이월(재고)'})
+
+    qty_df = pd.merge(qty_current, qty_carry, on='자재코드', how='outer').fillna(0)
+    for c in ['신품','구품','재고','이월_신품','이월_구품','이월(재고)']:
+        qty_df[c] = qty_df[c].astype(int)
+    qty_df['전체'] = qty_df['재고'] + qty_df['이월(재고)']
 
     file_tag = " | ".join(f"📄 {f}" for f in df_raw['파일명'].unique())
     st.markdown(f"<small style='color:#A89E94'>{file_tag}</small>", unsafe_allow_html=True)
@@ -310,7 +324,7 @@ else:
 
             # 수불부 수량 LEFT JOIN (매핑 기준)
             merged = pd.merge(mp, qty_df, on='자재코드', how='left', suffixes=('_mp','_qty'))
-            for c in ['신품','구품','재고']:
+            for c in ['신품','구품','재고','이월_신품','이월_구품','이월(재고)','전체']:
                 qty_col = f'{c}_qty' if f'{c}_qty' in merged.columns else c
                 merged[c] = pd.to_numeric(merged.get(qty_col, 0), errors='coerce').fillna(0).astype(int)
                 for drop_c in [f'{c}_mp', f'{c}_qty']:
@@ -365,7 +379,7 @@ else:
             # ── 테이블 출력 ───────────────────────────────────────────
             show_cols = [c for c in display_cols if c in tdf.columns]
             disp = tdf[show_cols].copy().reset_index(drop=True)
-            for c in ['신품','구품','재고']:
+            for c in ['이월_신품','이월_구품','이월(재고)','신품','구품','재고','전체']:
                 if c in disp.columns:
                     disp[c] = disp[c].apply(fmt)
 
