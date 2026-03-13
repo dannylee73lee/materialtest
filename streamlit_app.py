@@ -85,16 +85,25 @@ def fmt(val):
 def load_mapping(path):
     expected = ['대분류','중분류','소분류','자재코드','품명','제조사']
     import openpyxl
+    # 시트명 자동 탐색: '매핑' 우선, 없으면 첫 번째 시트
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-    sheet_name = wb.sheetnames[0]   # 첫 번째 시트 자동 선택
+    sheet_names = wb.sheetnames
     wb.close()
+    sheet_name = sheet_names[0]
+    for s in sheet_names:
+        if '매핑' in s or '결과' in s:
+            sheet_name = s
+            break
     try:
-        mp = pd.read_excel(path, sheet_name=sheet_name, header=1)
+        # header=0 먼저 시도 후 컬럼 수가 6개 아니면 header=1 재시도
+        mp = pd.read_excel(path, sheet_name=sheet_name, header=0)
+        if len(mp.columns) < 6:
+            mp = pd.read_excel(path, sheet_name=sheet_name, header=1)
+        mp = mp.iloc[:, :6]
+        mp.columns = expected
     except Exception as e:
         st.warning(f"매핑 파일을 읽을 수 없습니다: {e}")
         return pd.DataFrame(columns=expected)
-    mp = mp.iloc[:, :6]
-    mp.columns = expected
     mp = mp.dropna(subset=['자재코드'])
     mp['자재코드'] = pd.to_numeric(mp['자재코드'], errors='coerce').astype('Int64')
     mp['대분류']   = mp['대분류'].astype(str).str.strip()
@@ -102,7 +111,16 @@ def load_mapping(path):
 
 @st.cache_data
 def parse_excel(file_bytes, file_name):
-    df = pd.read_excel(file_bytes, header=1)
+    raw = pd.read_excel(file_bytes, header=None)
+    # 헤더 행 자동 탐색: '순번' 또는 '자재코드'가 있는 행
+    header_row = 1
+    for i in range(min(5, len(raw))):
+        row_vals = raw.iloc[i].astype(str).tolist()
+        if any('순번' in v or '자재코드' in v for v in row_vals):
+            header_row = i
+            break
+    df = pd.read_excel(file_bytes, header=header_row)
+    df = df.iloc[:, :12]
     df.columns = ['순번','사업년도','지역본부','군','업체명','자재분류',
                   '자재코드','자재명','FULL자재명','신품','구품_양호','구품_불량']
     df['신품']      = pd.to_numeric(df['신품'],      errors='coerce').fillna(0).astype(int)
@@ -169,7 +187,7 @@ df_raw = pd.concat(all_dfs, ignore_index=True)
 # ── 전체 필터 없음 (탭별 필터로 대체) ─────────────────────────
 fdf = df_raw.copy()
 
-file_tag = " | ".join(f"📄 {f}" for f in sel_files)
+file_tag = " | ".join(f"📄 {f}" for f in df_raw['파일명'].unique())
 st.markdown(f"<small style='color:#A89E94'>{file_tag}</small>", unsafe_allow_html=True)
 st.markdown("---")
 
