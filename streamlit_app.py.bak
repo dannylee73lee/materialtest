@@ -118,6 +118,12 @@ def parse_excel(file_bytes, file_name):
 
 # ── 사이드바 ─────────────────────────────────────────────────────
 with st.sidebar:
+    st.markdown("## 📁 파일 관리")
+    if os.path.exists(MAPPING_PATH):
+        st.markdown('<span class="status-ok">✅ 결과_format.xlsx 로드됨</span>', unsafe_allow_html=True)
+    else:
+        st.markdown('<span class="status-warn">⚠️ data/결과_format.xlsx 없음</span>', unsafe_allow_html=True)
+    st.markdown("---")
     st.markdown("#### 수불부 현황 업로드")
     st.caption("여러 파일 동시 업로드 가능")
     uploaded_files = st.file_uploader(
@@ -201,7 +207,7 @@ with c1:
     if total_stock > 0:
         pie_df = pd.DataFrame({'구분': ['신품','구품'], '수량': [total_new, total_used]})
         fig = px.pie(pie_df, names='구분', values='수량',
-                     color_discrete_sequence=['#1D4ED8','#F59E0B'], hole=0.45)
+                     color_discrete_sequence=['#B45309','#D97706'], hole=0.45)
         fig.update_traces(textinfo='label+percent', textfont_size=13)
         fig.update_layout(**LAYOUT, margin=MARGIN_SM, legend=dict(font=dict(color='#3D3530')))
         st.plotly_chart(fig, use_container_width=True)
@@ -215,8 +221,8 @@ with c2:
     biz = biz.sort_values('재고', ascending=False).head(10)
     if not biz.empty:
         fig = go.Figure()
-        fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#1D4ED8')
-        fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B')
+        fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#B45309')
+        fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#D97706')
         fig.update_layout(barmode='stack', **LAYOUT, margin=MARGIN_SM,
                           xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
                           legend=dict(font=dict(color='#3D3530')))
@@ -226,15 +232,14 @@ with c2:
 
 c3, c4 = st.columns(2)
 with c3:
-    st.markdown('<div class="section-title">📦 재고 TOP 10 자재</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📦 재고 TOP 15 자재</div>', unsafe_allow_html=True)
     top = (df_raw[df_raw['재고'] > 0].groupby('자재명')['재고'].sum()
-           .reset_index().sort_values('재고', ascending=True).tail(10))
+           .reset_index().sort_values('재고', ascending=True).tail(15))
     if not top.empty:
         top['자재명_short'] = top['자재명'].str[:25]
         fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
-                     color='재고', color_continuous_scale='YlOrBr', text='재고')
-        fig.update_traces(texttemplate='%{text:,}', textposition='outside')
-        fig.update_layout(**LAYOUT, margin=dict(t=20,b=20,r=60),
+                     color='재고', color_continuous_scale='YlOrBr')
+        fig.update_layout(**LAYOUT, margin=MARGIN_SM,
                           xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
                           coloraxis_showscale=False)
         st.plotly_chart(fig, use_container_width=True)
@@ -339,22 +344,6 @@ for tab_ui, tab_cfg in zip(tabs, TAB_CONFIG):
                 '구품':     st.column_config.TextColumn('구품',  help='구품(양호) 수량'),
                 '재고':     st.column_config.TextColumn('재고',  help='신품+구품 합계'),
             }
-        )
-
-        # 엑셀 다운로드
-        dl_df = tdf[show_cols].copy().reset_index(drop=True)
-        import io as _io
-        buf_xl = _io.BytesIO()
-        with pd.ExcelWriter(buf_xl, engine='openpyxl') as writer:
-            dl_df.to_excel(writer, index=False, sheet_name='조회결과')
-        buf_xl.seek(0)
-        file_label = kw if kw else '전체'
-        st.download_button(
-            label=f"⬇️ 엑셀 다운로드 ({len(dl_df):,}건)",
-            data=buf_xl,
-            file_name=f"{tab_cfg['sheet']}_{file_label}.xlsx",
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            key=f"dl_{tab_key}"
         )
         st.caption(
             f"표시 {len(tdf):,}건  |  전체 {len(merged):,}건  |  "
