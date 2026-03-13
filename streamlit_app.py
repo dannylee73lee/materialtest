@@ -323,12 +323,25 @@ else:
         biz = biz.sort_values('재고', ascending=False).head(10)
         if not biz.empty:
             total_biz = biz['재고'].sum()
-            biz['비율'] = (biz['재고'] / total_biz * 100).round(1)
-            biz['label'] = biz['비율'].apply(lambda x: f'{x}%')
+            biz['업체비율'] = (biz['재고'] / total_biz * 100).round(1)
+            biz['신품비율'] = biz.apply(lambda r: round(r['신품']/r['재고']*100, 1) if r['재고'] > 0 else 0, axis=1)
+            biz['구품비율'] = biz.apply(lambda r: round(r['구품']/r['재고']*100, 1) if r['재고'] > 0 else 0, axis=1)
+            biz['신품label'] = biz.apply(lambda r: f"신품 {r['신품비율']}%" if r['신품'] > 0 else '', axis=1)
+            biz['구품label'] = biz.apply(lambda r: f"구품 {r['구품비율']}%" if r['구품'] > 0 else '', axis=1)
+            biz['총label']   = biz['업체비율'].apply(lambda x: f'{x}%')
             fig = go.Figure()
-            fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#5B9BD5')
+            fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#5B9BD5',
+                        text=biz['신품label'], textposition='inside',
+                        insidetextanchor='middle', textfont=dict(size=10))
             fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B',
-                        text=biz['label'], textposition='outside', textfont=dict(size=11))
+                        text=biz['구품label'], textposition='inside',
+                        insidetextanchor='middle', textfont=dict(size=10),
+                        customdata=biz['총label'],
+                        hovertemplate='%{x}<br>구품: %{y:,}<br>전체비율: %{customdata}<extra></extra>')
+            # 전체 비율은 구품 막대 끝(outside)에 별도 scatter로 표시
+            fig.add_scatter(x=biz['업체명'], y=biz['재고'], mode='text',
+                            text=biz['총label'], textposition='top center',
+                            textfont=dict(size=11, color='#3D3530'), showlegend=False)
             fig.update_layout(barmode='stack', **LAYOUT, margin=dict(t=30,b=20),
                               xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
                               legend=dict(font=dict(color='#3D3530')))
