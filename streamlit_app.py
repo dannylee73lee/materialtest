@@ -158,208 +158,208 @@ if parse_errors:
 
 if not all_dfs:
     st.error("업로드된 파일에서 데이터를 읽지 못했습니다.")
-    st.stop()
+else:
 
-df_raw = pd.concat(all_dfs, ignore_index=True)
-qty_df = df_raw.groupby('자재코드')[['신품','구품','재고']].sum().reset_index()
+    df_raw = pd.concat(all_dfs, ignore_index=True)
+    qty_df = df_raw.groupby('자재코드')[['신품','구품','재고']].sum().reset_index()
 
-file_tag = " | ".join(f"📄 {f}" for f in df_raw['파일명'].unique())
-st.markdown(f"<small style='color:#A89E94'>{file_tag}</small>", unsafe_allow_html=True)
-st.markdown("---")
+    file_tag = " | ".join(f"📄 {f}" for f in df_raw['파일명'].unique())
+    st.markdown(f"<small style='color:#A89E94'>{file_tag}</small>", unsafe_allow_html=True)
+    st.markdown("---")
 
-# ── 전체 KPI ─────────────────────────────────────────────────────
-total_rows  = len(df_raw)
-total_new   = int(df_raw['신품'].sum())
-total_used  = int(df_raw['구품'].sum())
-total_stock = int(df_raw['재고'].sum())
-has_qty_cnt = int((df_raw['재고'] > 0).sum())
+    # ── 전체 KPI ─────────────────────────────────────────────────────
+    total_rows  = len(df_raw)
+    total_new   = int(df_raw['신품'].sum())
+    total_used  = int(df_raw['구품'].sum())
+    total_stock = int(df_raw['재고'].sum())
+    has_qty_cnt = int((df_raw['재고'] > 0).sum())
 
-def kpi(col, label, value, unit=""):
-    col.markdown(f"""
-    <div class="kpi-card">
-        <div class="kpi-label">{label}</div>
-        <div class="kpi-value">{value:,}</div>
-        <div class="kpi-unit">{unit}</div>
-    </div>""", unsafe_allow_html=True)
+    def kpi(col, label, value, unit=""):
+        col.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">{label}</div>
+            <div class="kpi-value">{value:,}</div>
+            <div class="kpi-unit">{unit}</div>
+        </div>""", unsafe_allow_html=True)
 
-k1, k2, k3, k4, k5 = st.columns(5)
-kpi(k1, "전체 자재 항목", total_rows,    "건")
-kpi(k2, "신품 수량",      total_new,     "개")
-kpi(k3, "구품 수량",      total_used,    "개")
-kpi(k4, "총 재고",        total_stock,   "개")
-kpi(k5, "재고 보유 항목", has_qty_cnt,   "건")
-st.markdown("<br>", unsafe_allow_html=True)
+    k1, k2, k3, k4, k5 = st.columns(5)
+    kpi(k1, "전체 자재 항목", total_rows,    "건")
+    kpi(k2, "신품 수량",      total_new,     "개")
+    kpi(k3, "구품 수량",      total_used,    "개")
+    kpi(k4, "총 재고",        total_stock,   "개")
+    kpi(k5, "재고 보유 항목", has_qty_cnt,   "건")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-# ── 차트 ─────────────────────────────────────────────────────────
-LAYOUT       = dict(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#3D3530')
-MARGIN_SM    = dict(t=20, b=20)
-MARGIN_LABEL = dict(t=30, b=20)
+    # ── 차트 ─────────────────────────────────────────────────────────
+    LAYOUT       = dict(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#3D3530')
+    MARGIN_SM    = dict(t=20, b=20)
+    MARGIN_LABEL = dict(t=30, b=20)
 
-c1, c2 = st.columns(2)
-with c1:
-    st.markdown('<div class="section-title">📊 신품 / 구품 비율</div>', unsafe_allow_html=True)
-    if total_stock > 0:
-        pie_df = pd.DataFrame({'구분': ['신품','구품'], '수량': [total_new, total_used]})
-        fig = px.pie(pie_df, names='구분', values='수량',
-                     color_discrete_sequence=['#1D4ED8','#F59E0B'], hole=0.45)
-        fig.update_traces(textinfo='label+percent', textfont_size=13)
-        fig.update_layout(**LAYOUT, margin=MARGIN_SM, legend=dict(font=dict(color='#3D3530')))
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("수량 데이터가 없습니다.")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown('<div class="section-title">📊 신품 / 구품 비율</div>', unsafe_allow_html=True)
+        if total_stock > 0:
+            pie_df = pd.DataFrame({'구분': ['신품','구품'], '수량': [total_new, total_used]})
+            fig = px.pie(pie_df, names='구분', values='수량',
+                         color_discrete_sequence=['#1D4ED8','#F59E0B'], hole=0.45)
+            fig.update_traces(textinfo='label+percent', textfont_size=13)
+            fig.update_layout(**LAYOUT, margin=MARGIN_SM, legend=dict(font=dict(color='#3D3530')))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("수량 데이터가 없습니다.")
 
-with c2:
-    st.markdown('<div class="section-title">🏢 업체별 재고 현황 (TOP 10)</div>', unsafe_allow_html=True)
-    biz = df_raw[df_raw['재고'] > 0].groupby('업체명')[['신품','구품']].sum().reset_index()
-    biz['재고'] = biz['신품'] + biz['구품']
-    biz = biz.sort_values('재고', ascending=False).head(10)
-    if not biz.empty:
-        fig = go.Figure()
-        fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#1D4ED8')
-        fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B')
-        fig.update_layout(barmode='stack', **LAYOUT, margin=MARGIN_SM,
-                          xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
-                          legend=dict(font=dict(color='#3D3530')))
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("업체 데이터가 없습니다.")
+    with c2:
+        st.markdown('<div class="section-title">🏢 업체별 재고 현황 (TOP 10)</div>', unsafe_allow_html=True)
+        biz = df_raw[df_raw['재고'] > 0].groupby('업체명')[['신품','구품']].sum().reset_index()
+        biz['재고'] = biz['신품'] + biz['구품']
+        biz = biz.sort_values('재고', ascending=False).head(10)
+        if not biz.empty:
+            fig = go.Figure()
+            fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#1D4ED8')
+            fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B')
+            fig.update_layout(barmode='stack', **LAYOUT, margin=MARGIN_SM,
+                              xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
+                              legend=dict(font=dict(color='#3D3530')))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("업체 데이터가 없습니다.")
 
-c3, c4 = st.columns(2)
-with c3:
-    st.markdown('<div class="section-title">📦 재고 TOP 10 자재</div>', unsafe_allow_html=True)
-    top = (df_raw[df_raw['재고'] > 0].groupby('자재명')['재고'].sum()
-           .reset_index().sort_values('재고', ascending=True).tail(10))
-    if not top.empty:
-        top['자재명_short'] = top['자재명'].str[:25]
-        fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
-                     color='재고', color_continuous_scale='YlOrBr', text='재고')
-        fig.update_traces(texttemplate='%{text:,}', textposition='outside')
-        fig.update_layout(**LAYOUT, margin=dict(t=20,b=20,r=60),
+    c3, c4 = st.columns(2)
+    with c3:
+        st.markdown('<div class="section-title">📦 재고 TOP 10 자재</div>', unsafe_allow_html=True)
+        top = (df_raw[df_raw['재고'] > 0].groupby('자재명')['재고'].sum()
+               .reset_index().sort_values('재고', ascending=True).tail(10))
+        if not top.empty:
+            top['자재명_short'] = top['자재명'].str[:25]
+            fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
+                         color='재고', color_continuous_scale='YlOrBr', text='재고')
+            fig.update_traces(texttemplate='%{text:,}', textposition='outside')
+            fig.update_layout(**LAYOUT, margin=dict(t=20,b=20,r=60),
+                              xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
+                              coloraxis_showscale=False)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("재고 데이터가 없습니다.")
+
+    with c4:
+        st.markdown('<div class="section-title">🗂️ 자재분류별 항목 수</div>', unsafe_allow_html=True)
+        mc = df_raw.groupby('자재분류').size().reset_index(name='항목수')
+        fig = px.bar(mc, x='자재분류', y='항목수', color='항목수',
+                     color_continuous_scale='YlOrBr', text='항목수')
+        fig.update_traces(textposition='outside')
+        fig.update_layout(**LAYOUT, margin=MARGIN_LABEL,
                           xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
                           coloraxis_showscale=False)
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("재고 데이터가 없습니다.")
 
-with c4:
-    st.markdown('<div class="section-title">🗂️ 자재분류별 항목 수</div>', unsafe_allow_html=True)
-    mc = df_raw.groupby('자재분류').size().reset_index(name='항목수')
-    fig = px.bar(mc, x='자재분류', y='항목수', color='항목수',
-                 color_continuous_scale='YlOrBr', text='항목수')
-    fig.update_traces(textposition='outside')
-    fig.update_layout(**LAYOUT, margin=MARGIN_LABEL,
-                      xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
-                      coloraxis_showscale=False)
-    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("---")
 
-st.markdown("---")
+    # ── 탭별 상세 테이블 ─────────────────────────────────────────────
+    if not os.path.exists(MAPPING_PATH):
+        st.warning("data/결과_format.xlsx 가 없어 상세 테이블을 표시할 수 없습니다.")
+        st.stop()
 
-# ── 탭별 상세 테이블 ─────────────────────────────────────────────
-if not os.path.exists(MAPPING_PATH):
-    st.warning("data/결과_format.xlsx 가 없어 상세 테이블을 표시할 수 없습니다.")
-    st.stop()
+    tabs = st.tabs([t["label"] for t in TAB_CONFIG])
 
-tabs = st.tabs([t["label"] for t in TAB_CONFIG])
+    for tab_ui, tab_cfg in zip(tabs, TAB_CONFIG):
+        with tab_ui:
+            mp = load_mapping_sheet(MAPPING_PATH, tab_cfg["sheet"], tab_cfg["col_map"])
+            if mp.empty:
+                st.warning(f"[{tab_cfg['sheet']}] 시트를 읽을 수 없습니다.")
+                continue
 
-for tab_ui, tab_cfg in zip(tabs, TAB_CONFIG):
-    with tab_ui:
-        mp = load_mapping_sheet(MAPPING_PATH, tab_cfg["sheet"], tab_cfg["col_map"])
-        if mp.empty:
-            st.warning(f"[{tab_cfg['sheet']}] 시트를 읽을 수 없습니다.")
-            continue
+            # 수불부 수량 LEFT JOIN (매핑 기준)
+            merged = pd.merge(mp, qty_df, on='자재코드', how='left', suffixes=('_mp','_qty'))
+            for c in ['신품','구품','재고']:
+                qty_col = f'{c}_qty' if f'{c}_qty' in merged.columns else c
+                merged[c] = pd.to_numeric(merged.get(qty_col, 0), errors='coerce').fillna(0).astype(int)
+                for drop_c in [f'{c}_mp', f'{c}_qty']:
+                    if drop_c in merged.columns:
+                        merged = merged.drop(columns=[drop_c])
 
-        # 수불부 수량 LEFT JOIN (매핑 기준)
-        merged = pd.merge(mp, qty_df, on='자재코드', how='left', suffixes=('_mp','_qty'))
-        for c in ['신품','구품','재고']:
-            qty_col = f'{c}_qty' if f'{c}_qty' in merged.columns else c
-            merged[c] = pd.to_numeric(merged.get(qty_col, 0), errors='coerce').fillna(0).astype(int)
-            for drop_c in [f'{c}_mp', f'{c}_qty']:
-                if drop_c in merged.columns:
-                    merged = merged.drop(columns=[drop_c])
+            tab_key = tab_cfg["label"]
+            filter2 = tab_cfg["filter2"]
+            # 표시 컬럼 = col_map 의 value(통일된 이름) 순서
+            display_cols = list(tab_cfg["col_map"].values())
 
-        tab_key = tab_cfg["label"]
-        filter2 = tab_cfg["filter2"]
-        # 표시 컬럼 = col_map 의 value(통일된 이름) 순서
-        display_cols = list(tab_cfg["col_map"].values())
+            # ── 필터 UI ──────────────────────────────────────────────
+            st.markdown(
+                "<div style='background:#FEF3C7;border:0.5px solid #F59E0B;border-radius:10px;"
+                "padding:14px 18px;margin-bottom:14px'>",
+                unsafe_allow_html=True
+            )
+            fa, fb, fc, fd = st.columns([3, 2, 2, 1])
+            with fa:
+                kw = st.text_input("🔍 품명 검색", placeholder="품명 키워드를 입력하세요",
+                                   key=f"kw_{tab_key}")
+            with fb:
+                c1_opts = ['전체'] + sorted(merged['대분류'].dropna().unique().tolist())
+                sel_c1  = st.selectbox("대분류", c1_opts, key=f"c1_{tab_key}")
+            with fc:
+                src2    = merged if sel_c1 == '전체' else merged[merged['대분류'] == sel_c1]
+                c2_opts = ['전체'] + sorted(src2[filter2].dropna().unique().tolist())
+                sel_c2  = st.selectbox(filter2, c2_opts, key=f"c2_{tab_key}")
+            with fd:
+                st.markdown("<div style='padding-top:28px'></div>", unsafe_allow_html=True)
+                only_qty = st.checkbox("재고만", value=False, key=f"qty_{tab_key}")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── 필터 UI ──────────────────────────────────────────────
-        st.markdown(
-            "<div style='background:#FEF3C7;border:0.5px solid #F59E0B;border-radius:10px;"
-            "padding:14px 18px;margin-bottom:14px'>",
-            unsafe_allow_html=True
-        )
-        fa, fb, fc, fd = st.columns([3, 2, 2, 1])
-        with fa:
-            kw = st.text_input("🔍 품명 검색", placeholder="품명 키워드를 입력하세요",
-                               key=f"kw_{tab_key}")
-        with fb:
-            c1_opts = ['전체'] + sorted(merged['대분류'].dropna().unique().tolist())
-            sel_c1  = st.selectbox("대분류", c1_opts, key=f"c1_{tab_key}")
-        with fc:
-            src2    = merged if sel_c1 == '전체' else merged[merged['대분류'] == sel_c1]
-            c2_opts = ['전체'] + sorted(src2[filter2].dropna().unique().tolist())
-            sel_c2  = st.selectbox(filter2, c2_opts, key=f"c2_{tab_key}")
-        with fd:
-            st.markdown("<div style='padding-top:28px'></div>", unsafe_allow_html=True)
-            only_qty = st.checkbox("재고만", value=False, key=f"qty_{tab_key}")
-        st.markdown("</div>", unsafe_allow_html=True)
+            # ── 필터 적용 ────────────────────────────────────────────
+            tdf = merged.copy()
+            if kw:
+                tdf = tdf[tdf['품명'].str.contains(kw, na=False, case=False)]
+            if sel_c1 != '전체':
+                tdf = tdf[tdf['대분류'] == sel_c1]
+            if sel_c2 != '전체':
+                tdf = tdf[tdf[filter2] == sel_c2]
+            if only_qty:
+                tdf = tdf[tdf['재고'] > 0]
 
-        # ── 필터 적용 ────────────────────────────────────────────
-        tdf = merged.copy()
-        if kw:
-            tdf = tdf[tdf['품명'].str.contains(kw, na=False, case=False)]
-        if sel_c1 != '전체':
-            tdf = tdf[tdf['대분류'] == sel_c1]
-        if sel_c2 != '전체':
-            tdf = tdf[tdf[filter2] == sel_c2]
-        if only_qty:
-            tdf = tdf[tdf['재고'] > 0]
+            # ── 소계 KPI ─────────────────────────────────────────────
+            t1, t2, t3, t4 = st.columns(4)
+            t1.metric("항목 수",   f"{len(tdf):,} 건")
+            t2.metric("신품 합계", f"{int(tdf['신품'].sum()):,} 개")
+            t3.metric("구품 합계", f"{int(tdf['구품'].sum()):,} 개")
+            t4.metric("재고 합계", f"{int(tdf['재고'].sum()):,} 개")
 
-        # ── 소계 KPI ─────────────────────────────────────────────
-        t1, t2, t3, t4 = st.columns(4)
-        t1.metric("항목 수",   f"{len(tdf):,} 건")
-        t2.metric("신품 합계", f"{int(tdf['신품'].sum()):,} 개")
-        t3.metric("구품 합계", f"{int(tdf['구품'].sum()):,} 개")
-        t4.metric("재고 합계", f"{int(tdf['재고'].sum()):,} 개")
+            # ── 테이블 출력 ───────────────────────────────────────────
+            show_cols = [c for c in display_cols if c in tdf.columns]
+            disp = tdf[show_cols].copy().reset_index(drop=True)
+            for c in ['신품','구품','재고']:
+                if c in disp.columns:
+                    disp[c] = disp[c].apply(fmt)
 
-        # ── 테이블 출력 ───────────────────────────────────────────
-        show_cols = [c for c in display_cols if c in tdf.columns]
-        disp = tdf[show_cols].copy().reset_index(drop=True)
-        for c in ['신품','구품','재고']:
-            if c in disp.columns:
-                disp[c] = disp[c].apply(fmt)
+            st.dataframe(
+                disp,
+                use_container_width=True,
+                height=480,
+                column_config={
+                    '자재코드': st.column_config.TextColumn('자재코드'),
+                    '신품':     st.column_config.TextColumn('신품',  help='신품 수량'),
+                    '구품':     st.column_config.TextColumn('구품',  help='구품(양호) 수량'),
+                    '재고':     st.column_config.TextColumn('재고',  help='신품+구품 합계'),
+                }
+            )
 
-        st.dataframe(
-            disp,
-            use_container_width=True,
-            height=480,
-            column_config={
-                '자재코드': st.column_config.TextColumn('자재코드'),
-                '신품':     st.column_config.TextColumn('신품',  help='신품 수량'),
-                '구품':     st.column_config.TextColumn('구품',  help='구품(양호) 수량'),
-                '재고':     st.column_config.TextColumn('재고',  help='신품+구품 합계'),
-            }
-        )
-
-        # 엑셀 다운로드
-        dl_df = tdf[show_cols].copy().reset_index(drop=True)
-        import io as _io
-        buf_xl = _io.BytesIO()
-        with pd.ExcelWriter(buf_xl, engine='openpyxl') as writer:
-            dl_df.to_excel(writer, index=False, sheet_name='조회결과')
-        buf_xl.seek(0)
-        from datetime import datetime
-        today = datetime.now().strftime('%Y%m%d')
-        file_label = kw if kw else tab_cfg['sheet']
-        dl_filename = f"{file_label}_{today}.xlsx"
-        st.download_button(
-            label=f"⬇️ 엑셀 다운로드 ({len(dl_df):,}건)",
-            data=buf_xl,
-            file_name=dl_filename,
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            key=f"dl_{tab_key}"
-        )
-        st.caption(
-            f"표시 {len(tdf):,}건  |  전체 {len(merged):,}건  |  "
-            f"재고 보유 {int((merged['재고'] > 0).sum()):,}건"
-        )
+            # 엑셀 다운로드
+            dl_df = tdf[show_cols].copy().reset_index(drop=True)
+            import io as _io
+            buf_xl = _io.BytesIO()
+            with pd.ExcelWriter(buf_xl, engine='openpyxl') as writer:
+                dl_df.to_excel(writer, index=False, sheet_name='조회결과')
+            buf_xl.seek(0)
+            from datetime import datetime
+            today = datetime.now().strftime('%Y%m%d')
+            file_label = kw if kw else tab_cfg['sheet']
+            dl_filename = f"{file_label}_{today}.xlsx"
+            st.download_button(
+                label=f"⬇️ 엑셀 다운로드 ({len(dl_df):,}건)",
+                data=buf_xl,
+                file_name=dl_filename,
+                mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                key=f"dl_{tab_key}"
+            )
+            st.caption(
+                f"표시 {len(tdf):,}건  |  전체 {len(merged):,}건  |  "
+                f"재고 보유 {int((merged['재고'] > 0).sum()):,}건"
+            )
