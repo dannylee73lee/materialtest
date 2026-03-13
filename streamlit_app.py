@@ -90,7 +90,6 @@ def load_mapping_sheet(path, sheet, col_map):
         st.error(f"매핑 시트 [{sheet}] 읽기 실패: {e}")
         return pd.DataFrame()
 
-@st.cache_data
 def parse_excel(file_bytes, file_name):
     buf = io.BytesIO(file_bytes)
     raw = pd.read_excel(buf, header=None)
@@ -348,11 +347,14 @@ for tab_ui, tab_cfg in zip(tabs, TAB_CONFIG):
         with pd.ExcelWriter(buf_xl, engine='openpyxl') as writer:
             dl_df.to_excel(writer, index=False, sheet_name='조회결과')
         buf_xl.seek(0)
-        file_label = kw if kw else '전체'
+        from datetime import datetime
+        today = datetime.now().strftime('%Y%m%d')
+        file_label = kw if kw else tab_cfg['sheet']
+        dl_filename = f"{file_label}_{today}.xlsx"
         st.download_button(
             label=f"⬇️ 엑셀 다운로드 ({len(dl_df):,}건)",
             data=buf_xl,
-            file_name=f"{tab_cfg['sheet']}_{file_label}.xlsx",
+            file_name=dl_filename,
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             key=f"dl_{tab_key}"
         )
