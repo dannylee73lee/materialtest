@@ -84,21 +84,10 @@ def fmt(val):
 @st.cache_data
 def load_mapping(path):
     expected = ['대분류','중분류','소분류','자재코드','품명','제조사']
-    import openpyxl
-    # 시트명 자동 탐색: '매핑' 우선, 없으면 첫 번째 시트
-    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-    sheet_names = wb.sheetnames
-    wb.close()
-    sheet_name = sheet_names[0]
-    for s in sheet_names:
-        if '매핑' in s or '결과' in s:
-            sheet_name = s
-            break
     try:
-        # header=0 먼저 시도 후 컬럼 수가 6개 아니면 header=1 재시도
-        mp = pd.read_excel(path, sheet_name=sheet_name, header=0)
+        mp = pd.read_csv(path, encoding='utf-8-sig', dtype=str)
         if len(mp.columns) < 6:
-            mp = pd.read_excel(path, sheet_name=sheet_name, header=1)
+            raise ValueError(f"컬럼 수 부족: {len(mp.columns)}개")
         mp = mp.iloc[:, :6]
         mp.columns = expected
     except Exception as e:
@@ -111,15 +100,18 @@ def load_mapping(path):
 
 @st.cache_data
 def parse_excel(file_bytes, file_name):
-    raw = pd.read_excel(file_bytes, header=None)
+    import io
+    buf = io.BytesIO(file_bytes)
+    raw = pd.read_excel(buf, header=None)
     # 헤더 행 자동 탐색: '순번' 또는 '자재코드'가 있는 행
-    header_row = 1
+    header_row = 0
     for i in range(min(5, len(raw))):
         row_vals = raw.iloc[i].astype(str).tolist()
         if any('순번' in v or '자재코드' in v for v in row_vals):
             header_row = i
             break
-    df = pd.read_excel(file_bytes, header=header_row)
+    buf.seek(0)
+    df = pd.read_excel(buf, header=header_row)
     if len(df.columns) < 12:
         raise ValueError(f"컬럼 수가 {len(df.columns)}개입니다. 12개 이상이어야 합니다 (헤더 행 구조 확인)")
     df = df.iloc[:, :12]
