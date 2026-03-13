@@ -10,26 +10,29 @@ st.set_page_config(
     layout="wide"
 )
 
-# ── 스타일 ──────────────────────────────────────────────────────
+# ── 스타일 (Warm White 테마) ────────────────────────────────────
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] { background: #0f1117; }
-[data-testid="stSidebar"]          { background: #1a1d27; }
+[data-testid="stAppViewContainer"] { background: #FAFAF8; }
+[data-testid="stSidebar"]          { background: #F5F3EE; border-right: 1px solid #E8E4DC; }
 .kpi-card {
-    background: linear-gradient(135deg, #1e2130, #252a3b);
-    border: 1px solid #2e3450; border-radius: 12px;
+    background: #FFFFFF;
+    border: 0.5px solid #E8E4DC; border-radius: 12px;
     padding: 20px 24px; text-align: center;
 }
-.kpi-label { color: #8891aa; font-size: 13px; margin-bottom: 6px; }
-.kpi-value { color: #ffffff; font-size: 32px; font-weight: 700; }
-.kpi-unit  { color: #8891aa; font-size: 13px; margin-top: 4px; }
+.kpi-label { color: #7C7268; font-size: 13px; margin-bottom: 6px; }
+.kpi-value { color: #1A1A1A; font-size: 32px; font-weight: 600; }
+.kpi-unit  { color: #A89E94; font-size: 13px; margin-top: 4px; }
 .section-title {
-    color: #c5cae9; font-size: 16px; font-weight: 600;
-    padding: 8px 0 4px 0; border-bottom: 1px solid #2e3450; margin-bottom: 12px;
+    color: #3D3530; font-size: 15px; font-weight: 600;
+    padding: 8px 0 5px 0;
+    border-bottom: 2px solid #B45309; margin-bottom: 12px;
+    display: inline-block;
 }
-.status-ok   { color: #26a69a; font-weight: 600; }
-.status-warn { color: #ffa726; font-weight: 600; }
-[data-testid="stTabs"] button { font-size: 14px !important; font-weight: 600 !important; }
+.status-ok   { color: #166534; font-weight: 600; }
+.status-warn { color: #B45309; font-weight: 600; }
+[data-testid="stTabs"] button { font-size: 14px !important; font-weight: 600 !important; color: #3D3530 !important; }
+[data-testid="stTabs"] button[aria-selected="true"] { border-bottom-color: #B45309 !important; color: #1A1A1A !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -123,9 +126,6 @@ with st.sidebar:
         label_visibility="collapsed"
     )
 
-    st.markdown("---")
-    st.markdown("## 🔍 필터")
-    filter_area = st.empty()
 
 # ── 메인 헤더 ───────────────────────────────────────────────────
 st.markdown("# 📦 자재 현황 대시보드")
@@ -156,28 +156,11 @@ if not all_dfs:
 
 df_raw = pd.concat(all_dfs, ignore_index=True)
 
-# ── 사이드바 필터 ───────────────────────────────────────────────
-with filter_area.container():
-    file_list  = sorted(df_raw['파일명'].unique())
-    sel_files  = st.multiselect("파일", file_list, default=file_list) if len(file_list) > 1 else file_list
-    year_list  = sorted(df_raw['사업년도'].dropna().unique())
-    sel_year   = st.selectbox("사업년도", ["전체"] + list(year_list))
-    region_list = sorted(df_raw['지역본부'].dropna().unique())
-    sel_region  = st.multiselect("지역본부", region_list, default=region_list)
-    mat_list   = sorted(df_raw['자재분류'].dropna().unique())
-    sel_mat    = st.multiselect("자재분류", mat_list, default=mat_list)
-
-# ── 필터 적용 ───────────────────────────────────────────────────
-fdf = df_raw[df_raw['파일명'].isin(sel_files)].copy()
-if sel_year != "전체":
-    fdf = fdf[fdf['사업년도'] == sel_year]
-if sel_region:
-    fdf = fdf[fdf['지역본부'].isin(sel_region)]
-if sel_mat:
-    fdf = fdf[fdf['자재분류'].isin(sel_mat)]
+# ── 전체 필터 없음 (탭별 필터로 대체) ─────────────────────────
+fdf = df_raw.copy()
 
 file_tag = " | ".join(f"📄 {f}" for f in sel_files)
-st.markdown(f"<small style='color:#8891aa'>{file_tag}</small>", unsafe_allow_html=True)
+st.markdown(f"<small style='color:#A89E94'>{file_tag}</small>", unsafe_allow_html=True)
 st.markdown("---")
 
 # ── KPI ────────────────────────────────────────────────────────
@@ -206,7 +189,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ── 공통 차트 레이아웃 ──────────────────────────────────────────
 LAYOUT = dict(
     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-    font_color='#c5cae9', margin=dict(t=20, b=20)
+    font_color='#3D3530', margin=dict(t=20, b=20)
 )
 
 # ── 차트 Row 1 ──────────────────────────────────────────────────
@@ -217,7 +200,7 @@ with c1:
     if total_stock > 0:
         pie_df = pd.DataFrame({'구분':['신품','구품'], '수량':[total_new, total_used]})
         fig = px.pie(pie_df, names='구분', values='수량',
-                     color_discrete_sequence=['#5c6bc0','#26a69a'], hole=0.45)
+                     color_discrete_sequence=['#B45309','#92400E'], hole=0.45)
         fig.update_traces(textinfo='label+percent', textfont_size=13)
         fig.update_layout(**LAYOUT, legend=dict(font=dict(color='#c5cae9')))
         st.plotly_chart(fig, use_container_width=True)
@@ -232,10 +215,10 @@ with c2:
     biz = biz.sort_values('재고', ascending=False).head(10)
     if not biz.empty:
         fig = go.Figure()
-        fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#5c6bc0')
-        fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#26a69a')
+        fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#B45309')
+        fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#D97706')
         fig.update_layout(barmode='stack', **LAYOUT,
-                          xaxis=dict(gridcolor='#2e3450'), yaxis=dict(gridcolor='#2e3450'),
+                          xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
                           legend=dict(font=dict(color='#c5cae9')))
         st.plotly_chart(fig, use_container_width=True)
     else:
@@ -251,9 +234,9 @@ with c3:
     if not top.empty:
         top['자재명_short'] = top['자재명'].str[:25]
         fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
-                     color='재고', color_continuous_scale='Blues')
-        fig.update_layout(**LAYOUT, xaxis=dict(gridcolor='#2e3450'),
-                          yaxis=dict(gridcolor='#2e3450'), coloraxis_showscale=False)
+                     color='재고', color_continuous_scale='YlOrBr')
+        fig.update_layout(**LAYOUT, xaxis=dict(gridcolor='#E8E4DC'),
+                          yaxis=dict(gridcolor='#E8E4DC'), coloraxis_showscale=False)
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("재고 데이터가 없습니다.")
@@ -262,10 +245,10 @@ with c4:
     st.markdown('<div class="section-title">🗂️ 자재분류별 항목 수</div>', unsafe_allow_html=True)
     mc = fdf.groupby('자재분류').size().reset_index(name='항목수')
     fig = px.bar(mc, x='자재분류', y='항목수', color='항목수',
-                 color_continuous_scale='Purples', text='항목수')
+                 color_continuous_scale='YlOrBr', text='항목수')
     fig.update_traces(textposition='outside')
     fig.update_layout(**LAYOUT, margin=dict(t=30,b=20),
-                      xaxis=dict(gridcolor='#2e3450'), yaxis=dict(gridcolor='#2e3450'),
+                      xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
                       coloraxis_showscale=False)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -302,13 +285,17 @@ for tab_obj, tab_cfg in zip(tab_objs, TAB_CONFIG):
         merged['구품'] = merged['구품'].fillna(0).astype(int)
         merged['재고'] = merged['재고'].fillna(0).astype(int)
 
-        # ── 탭 내 필터 UI ─────────────────────────────────────
+        # ── 탭 내 필터 UI (메인 화면) ────────────────────────
         tab_key  = tab_cfg["label"]
-        필터2차  = tab_cfg["필터2차"]   # "중분류" or "소분류"
+        필터2차  = tab_cfg["필터2차"]
 
+        st.markdown(
+            "<div style='background:#FEF3C7;border:0.5px solid #F59E0B;border-radius:10px;"            "padding:14px 18px;margin-bottom:14px'>",
+            unsafe_allow_html=True
+        )
         f1, f2, f3, f4 = st.columns([3, 2, 2, 1])
         with f1:
-            kw = st.text_input("🔍 품명 검색", placeholder="키워드 입력...",
+            kw = st.text_input("🔍 품명 검색", placeholder="품명 키워드를 입력하세요",
                                key=f"kw_{tab_key}")
         with f2:
             c1_opts = ['전체'] + sorted(merged['대분류'].dropna().unique().tolist())
@@ -316,9 +303,11 @@ for tab_obj, tab_cfg in zip(tab_objs, TAB_CONFIG):
         with f3:
             src2    = merged if sel_c1 == '전체' else merged[merged['대분류'] == sel_c1]
             c2_opts = ['전체'] + sorted(src2[필터2차].dropna().unique().tolist())
-            sel_c2  = st.selectbox(필터2차, c2_opts, key=f"c2_{tab_key}")
+            sel_c2  = st.selectbox("중분류", c2_opts, key=f"c2_{tab_key}")
         with f4:
-            only_qty = st.checkbox("재고 있는 항목만", value=False, key=f"qty_{tab_key}")
+            st.markdown("<div style='padding-top:28px'></div>", unsafe_allow_html=True)
+            only_qty = st.checkbox("재고만", value=False, key=f"qty_{tab_key}")
+        st.markdown("</div>", unsafe_allow_html=True)
 
         # ── 필터 적용 ─────────────────────────────────────────
         tdf = merged.copy()
