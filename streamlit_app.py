@@ -83,8 +83,18 @@ def fmt(val):
 # ── 캐시 함수 ───────────────────────────────────────────────────
 @st.cache_data
 def load_mapping(path):
-    mp = pd.read_csv(path, encoding='utf-8-sig')
-    mp.columns = ['대분류','중분류','소분류','자재코드','품명','제조사']
+    expected = ['대분류','중분류','소분류','자재코드','품명','제조사']
+    import openpyxl
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    sheet_name = wb.sheetnames[0]   # 첫 번째 시트 자동 선택
+    wb.close()
+    try:
+        mp = pd.read_excel(path, sheet_name=sheet_name, header=1)
+    except Exception as e:
+        st.warning(f"매핑 파일을 읽을 수 없습니다: {e}")
+        return pd.DataFrame(columns=expected)
+    mp = mp.iloc[:, :6]
+    mp.columns = expected
     mp = mp.dropna(subset=['자재코드'])
     mp['자재코드'] = pd.to_numeric(mp['자재코드'], errors='coerce').astype('Int64')
     mp['대분류']   = mp['대분류'].astype(str).str.strip()
