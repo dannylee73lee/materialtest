@@ -255,7 +255,7 @@ else:
         if total_stock > 0:
             pie_df = pd.DataFrame({'구분': ['신품','구품'], '수량': [total_new, total_used]})
             fig = px.pie(pie_df, names='구분', values='수량',
-                         color_discrete_sequence=['#1D4ED8','#F59E0B'], hole=0.45)
+                         color_discrete_sequence=['#93C5FD','#F59E0B'], hole=0.45)
             fig.update_traces(textinfo='label+percent', textfont_size=13)
             fig.update_layout(**LAYOUT, margin=MARGIN_SM, legend=dict(font=dict(color='#3D3530')))
             st.plotly_chart(fig, use_container_width=True)
@@ -272,7 +272,7 @@ else:
             biz['비율'] = (biz['재고'] / total_biz * 100).round(1)
             biz['label'] = biz['비율'].apply(lambda x: f'{x}%')
             fig = go.Figure()
-            fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#1D4ED8')
+            fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#93C5FD')
             fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B',
                         text=biz['label'], textposition='outside', textfont=dict(size=11))
             fig.update_layout(barmode='stack', **LAYOUT, margin=dict(t=30,b=20),
@@ -288,11 +288,12 @@ else:
                .reset_index().sort_values('재고', ascending=True).tail(10))
         if not top.empty:
             top['자재명_short'] = top['자재명'].str[:25]
-            fig = px.bar(top, x='재고', y='자재명_short', orientation='h', text='재고')
-            fig.update_traces(texttemplate='%{text:,}', textposition='outside',
-                              marker_color='#B45309')
+            fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
+                         color='재고', color_continuous_scale='YlOrBr', text='재고')
+            fig.update_traces(texttemplate='%{text:,}', textposition='outside')
             fig.update_layout(**LAYOUT, margin=dict(t=20,b=20,r=60),
-                              xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'))
+                              xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
+                              coloraxis_showscale=False)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("재고 데이터가 없습니다.")
