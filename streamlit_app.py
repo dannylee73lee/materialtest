@@ -74,7 +74,7 @@ TAB_CONFIG = [
 
 # ── 매핑 파일 경로 ──────────────────────────────────────────────
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
-MAPPING_PATH = os.path.join(BASE_DIR, "data", "material_mapping.xlsx")
+MAPPING_PATH = os.path.join(BASE_DIR, "data", "material_mapping.csv")
 
 # ── 헬퍼 ───────────────────────────────────────────────────────
 def fmt(val):
@@ -83,7 +83,7 @@ def fmt(val):
 # ── 캐시 함수 ───────────────────────────────────────────────────
 @st.cache_data
 def load_mapping(path):
-    mp = pd.read_excel(path, sheet_name='결과 ', header=1)
+    mp = pd.read_csv(path, encoding='utf-8-sig')
     mp.columns = ['대분류','중분류','소분류','자재코드','품명','제조사']
     mp = mp.dropna(subset=['자재코드'])
     mp['자재코드'] = pd.to_numeric(mp['자재코드'], errors='coerce').astype('Int64')
@@ -114,7 +114,7 @@ with st.sidebar:
         st.caption(f"{len(mp_all):,}개 자재코드 | 대분류: {', '.join(sorted(mp_all['대분류'].unique()))}")
     else:
         mp_all = None
-        st.markdown('<span class="status-warn">⚠️ data/material_mapping.xlsx 없음</span>', unsafe_allow_html=True)
+        st.markdown('<span class="status-warn">⚠️ data/material_mapping.csv 없음</span>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("#### 수불부 현황 업로드")
@@ -266,7 +266,7 @@ tab_objs = st.tabs([t["label"] for t in TAB_CONFIG])
 for tab_obj, tab_cfg in zip(tab_objs, TAB_CONFIG):
     with tab_obj:
         if mp_all is None:
-            st.warning("data/material_mapping.xlsx가 없습니다. data 폴더에 파일을 넣어주세요.")
+            st.warning("data/material_mapping.csv가 없습니다. data 폴더에 파일을 넣어주세요.")
             continue
 
         # 해당 탭 대분류만 필터 (대분류는 strip 처리된 상태)
