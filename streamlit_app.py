@@ -339,7 +339,7 @@ else:
     with st.container():
         st.markdown('<div class="section-title">📦 재고 TOP 10 자재</div>', unsafe_allow_html=True)
         top = (df_raw[df_raw['재고'] > 0].groupby('자재명')['재고'].sum()
-               .reset_index().sort_values('재고', ascending=True).tail(10))
+               .reset_index().sort_values('재고', ascending=False).head(10))
         if not top.empty:
             top['자재명_short'] = top['자재명'].str[:25]
             fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
