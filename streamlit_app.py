@@ -90,6 +90,32 @@ def load_mapping_sheet(path, sheet, col_map):
         st.error(f"매핑 시트 [{sheet}] 읽기 실패: {e}")
         return pd.DataFrame()
 
+def parse_excel_carryover(file_bytes, file_name):
+    """이월현황 파싱 (컬럼 10개, 자재분류/자재명 없음)"""
+    buf = io.BytesIO(file_bytes)
+    raw = pd.read_excel(buf, header=None)
+    header_row = 0
+    for i in range(min(5, len(raw))):
+        row_vals = raw.iloc[i].astype(str).tolist()
+        if any('순번' in v or '자재코드' in v for v in row_vals):
+            header_row = i
+    buf.seek(0)
+    df = pd.read_excel(buf, header=header_row)
+    if len(df.columns) < 10:
+        raise ValueError(f"컬럼 수 {len(df.columns)}개 — 10개 이상 필요")
+    df = df.iloc[:, :10]
+    df.columns = ['순번','사업년도','지역본부','군','업체명',
+                  '자재코드','FULL자재명','신품','구품_양호','구품_불량']
+    df['자재분류'] = '이월'
+    df['자재명']   = df['FULL자재명']
+    df = df[pd.to_numeric(df['순번'], errors='coerce').notna()]
+    df['신품']     = pd.to_numeric(df['신품'],      errors='coerce').fillna(0).astype(int)
+    df['구품']     = pd.to_numeric(df['구품_양호'], errors='coerce').fillna(0).astype(int)
+    df['재고']     = df['신품'] + df['구품']
+    df['자재코드'] = pd.to_numeric(df['자재코드'],  errors='coerce').astype('Int64')
+    df['파일명']   = file_name
+    return df.dropna(subset=['자재코드'])
+
 def parse_excel(file_bytes, file_name):
     buf = io.BytesIO(file_bytes)
     raw = pd.read_excel(buf, header=None)
@@ -117,33 +143,47 @@ def parse_excel(file_bytes, file_name):
 
 # ── 사이드바 ─────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("#### 수불부 현황 업로드")
-    st.caption("여러 파일 동시 업로드 가능")
-    uploaded_files = st.file_uploader(
-        "엑셀 파일 선택", type=["xlsx","xls"],
-        accept_multiple_files=True, label_visibility="collapsed"
+    st.markdown("#### 📂 수불부 - 현재")
+    st.caption("2026년 재고현황")
+    uploaded_current = st.file_uploader(
+        "현재 수불부", type=["xlsx","xls"],
+        accept_multiple_files=True, label_visibility="collapsed",
+        key="upload_current"
     )
+    st.markdown("---")
+    st.markdown("#### 📂 수불부 - 이월 현황")
+    st.caption("2025년 이월 재고현황")
+    uploaded_carry = st.file_uploader(
+        "이월 수불부", type=["xlsx","xls"],
+        accept_multiple_files=True, label_visibility="collapsed",
+        key="upload_carry"
+    )
+    uploaded_files = (uploaded_current or []) + (uploaded_carry or [])
 
 # ── 메인 헤더 ────────────────────────────────────────────────────
 st.markdown("# 📦 자재 현황 대시보드")
 
 if not uploaded_files:
     st.markdown("---")
-    c1, c2 = st.columns(2)
-    with c1:
-        st.info("**① 수불부 현황 엑셀을 업로드하세요**\n\n좌측 사이드바에서 파일 선택 시 대시보드가 생성됩니다.")
-    with c2:
-        if os.path.exists(MAPPING_PATH):
-            st.success("**② 결과_format.xlsx 준비 완료**")
-        else:
-            st.warning("**② data/결과_format.xlsx 를 넣어주세요**")
+    st.info("**수불부 파일을 업로드하세요**\n\n좌측 사이드바에서 수불부 현재 또는 이월내역 파일을 선택하면 대시보드가 생성됩니다.")
     st.stop()
 
 # ── 수불부 파싱 ──────────────────────────────────────────────────
 all_dfs, parse_errors = [], []
-for f in uploaded_files:
+
+for f in (uploaded_current or []):
     try:
         parsed = parse_excel(f.read(), f.name)
+        if parsed is not None and len(parsed) > 0:
+            all_dfs.append(parsed)
+        else:
+            parse_errors.append(f"{f.name}: 데이터 없음")
+    except Exception as e:
+        parse_errors.append(f"{f.name}: {e}")
+
+for f in (uploaded_carry or []):
+    try:
+        parsed = parse_excel_carryover(f.read(), f.name)
         if parsed is not None and len(parsed) > 0:
             all_dfs.append(parsed)
         else:
