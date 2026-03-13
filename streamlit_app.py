@@ -268,43 +268,36 @@ else:
         biz['재고'] = biz['신품'] + biz['구품']
         biz = biz.sort_values('재고', ascending=False).head(10)
         if not biz.empty:
+            total_biz = biz['재고'].sum()
+            biz['비율'] = (biz['재고'] / total_biz * 100).round(1)
+            biz['label'] = biz['비율'].apply(lambda x: f'{x}%')
             fig = go.Figure()
             fig.add_bar(x=biz['업체명'], y=biz['신품'], name='신품', marker_color='#1D4ED8')
-            fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B')
-            fig.update_layout(barmode='stack', **LAYOUT, margin=MARGIN_SM,
+            fig.add_bar(x=biz['업체명'], y=biz['구품'], name='구품', marker_color='#F59E0B',
+                        text=biz['label'], textposition='outside', textfont=dict(size=11))
+            fig.update_layout(barmode='stack', **LAYOUT, margin=dict(t=30,b=20),
                               xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
                               legend=dict(font=dict(color='#3D3530')))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("업체 데이터가 없습니다.")
 
-    c3, c4 = st.columns(2)
-    with c3:
+    with st.container():
         st.markdown('<div class="section-title">📦 재고 TOP 10 자재</div>', unsafe_allow_html=True)
         top = (df_raw[df_raw['재고'] > 0].groupby('자재명')['재고'].sum()
                .reset_index().sort_values('재고', ascending=True).tail(10))
         if not top.empty:
             top['자재명_short'] = top['자재명'].str[:25]
-            fig = px.bar(top, x='재고', y='자재명_short', orientation='h',
-                         color='재고', color_continuous_scale='YlOrBr', text='재고')
-            fig.update_traces(texttemplate='%{text:,}', textposition='outside')
+            fig = px.bar(top, x='재고', y='자재명_short', orientation='h', text='재고')
+            fig.update_traces(texttemplate='%{text:,}', textposition='outside',
+                              marker_color='#B45309')
             fig.update_layout(**LAYOUT, margin=dict(t=20,b=20,r=60),
-                              xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
-                              coloraxis_showscale=False)
+                              xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'))
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("재고 데이터가 없습니다.")
 
-    with c4:
-        st.markdown('<div class="section-title">🗂️ 자재분류별 항목 수</div>', unsafe_allow_html=True)
-        mc = df_raw.groupby('자재분류').size().reset_index(name='항목수')
-        fig = px.bar(mc, x='자재분류', y='항목수', color='항목수',
-                     color_continuous_scale='YlOrBr', text='항목수')
-        fig.update_traces(textposition='outside')
-        fig.update_layout(**LAYOUT, margin=MARGIN_LABEL,
-                          xaxis=dict(gridcolor='#E8E4DC'), yaxis=dict(gridcolor='#E8E4DC'),
-                          coloraxis_showscale=False)
-        st.plotly_chart(fig, use_container_width=True)
+
 
     st.markdown("---")
 
