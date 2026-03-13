@@ -120,6 +120,8 @@ def parse_excel(file_bytes, file_name):
             header_row = i
             break
     df = pd.read_excel(file_bytes, header=header_row)
+    if len(df.columns) < 12:
+        raise ValueError(f"컬럼 수가 {len(df.columns)}개입니다. 12개 이상이어야 합니다 (헤더 행 구조 확인)")
     df = df.iloc[:, :12]
     df.columns = ['순번','사업년도','지역본부','군','업체명','자재분류',
                   '자재코드','자재명','FULL자재명','신품','구품_양호','구품_불량']
@@ -172,14 +174,23 @@ if not uploaded_files:
 
 # ── 수불부 파싱 ─────────────────────────────────────────────────
 all_dfs = []
+parse_errors = []
 for f in uploaded_files:
     try:
-        all_dfs.append(parse_excel(f.read(), f.name))
+        parsed = parse_excel(f.read(), f.name)
+        if parsed is not None and len(parsed) > 0:
+            all_dfs.append(parsed)
+        else:
+            parse_errors.append(f"{f.name}: 데이터가 없습니다 (헤더 행 구조를 확인하세요)")
     except Exception as e:
-        st.sidebar.error(f"❌ {f.name}: {e}")
+        parse_errors.append(f"{f.name}: {e}")
+
+if parse_errors:
+    for msg in parse_errors:
+        st.error(f"❌ {msg}")
 
 if not all_dfs:
-    st.error("파일을 읽을 수 없습니다.")
+    st.warning("업로드된 파일을 읽을 수 없습니다. 엑셀 파일 형식(헤더 2행 구조)을 확인해주세요.")
     st.stop()
 
 df_raw = pd.concat(all_dfs, ignore_index=True)
