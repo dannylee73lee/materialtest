@@ -71,7 +71,7 @@ TAB_CONFIG = [
 
 # ── 매핑 파일 경로 ──────────────────────────────────────────────
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
-MAPPING_PATH = os.path.join(BASE_DIR, "코드_매핑.xlsx")
+MAPPING_PATH = os.path.join(BASE_DIR, "data", "material_mapping.xlsx")
 
 # ── 헬퍼 ───────────────────────────────────────────────────────
 def fmt(val):
@@ -111,7 +111,7 @@ with st.sidebar:
         st.caption(f"{len(mp_all):,}개 자재코드 | 대분류: {', '.join(sorted(mp_all['대분류'].unique()))}")
     else:
         mp_all = None
-        st.markdown('<span class="status-warn">⚠️ 코드_매핑.xlsx 없음</span>', unsafe_allow_html=True)
+        st.markdown('<span class="status-warn">⚠️ data/material_mapping.xlsx 없음</span>', unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("#### 수불부 현황 업로드")
@@ -283,7 +283,7 @@ tab_objs = st.tabs([t["label"] for t in TAB_CONFIG])
 for tab_obj, tab_cfg in zip(tab_objs, TAB_CONFIG):
     with tab_obj:
         if mp_all is None:
-            st.warning("코드_매핑.xlsx가 없습니다. 앱 폴더에 파일을 넣어주세요.")
+            st.warning("data/material_mapping.xlsx가 없습니다. data 폴더에 파일을 넣어주세요.")
             continue
 
         # 해당 탭 대분류만 필터 (대분류는 strip 처리된 상태)
