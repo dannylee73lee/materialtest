@@ -106,6 +106,27 @@ TAB_CONFIG = [
         },
         "filter2": "중분류",
     },
+    {
+        "label":   "📦 부대물자",
+        "sheet":   "부대물자",
+        "col_map": {
+            "분류":"대분류",
+            "자재코드":"자재코드","품명":"품명",
+            "이월_신품":"이월_신품","이월_구품":"이월_구품","이월(재고)":"이월(재고)",
+            "신품":"신품","구품":"구품","재고":"재고","전체":"전체"
+        },
+        "filter2": "대분류",
+    },
+    {
+        "label":   "📡 안테나",
+        "sheet":   "안테나",
+        "col_map": {
+            "자재코드":"자재코드","품명":"품명",
+            "이월_신품":"이월_신품","이월_구품":"이월_구품","이월(재고)":"이월(재고)",
+            "신품":"신품","구품":"구품","재고":"재고","전체":"전체"
+        },
+        "filter2": None,
+    },
 ]
 
 def fmt(val):
@@ -369,17 +390,30 @@ else:
                 "padding:14px 18px;margin-bottom:14px'>",
                 unsafe_allow_html=True
             )
-            fa, fb, fc, fd = st.columns([3, 2, 2, 1])
+            has_c1 = '대분류' in merged.columns
+            if filter2 is not None and has_c1:
+                fa, fb, fc, fd = st.columns([3, 2, 2, 1])
+            elif has_c1:
+                fa, fb, fd = st.columns([3, 2, 1])
+                fc = None
+            else:
+                fa, fd = st.columns([5, 1])
+                fb = fc = None
+
             with fa:
                 kw = st.text_input("🔍 품명 검색", placeholder="품명 키워드를 입력하세요",
                                    key=f"kw_{tab_key}")
-            with fb:
-                c1_opts = ['전체'] + sorted(merged['대분류'].dropna().unique().tolist())
-                sel_c1  = st.selectbox("대분류", c1_opts, key=f"c1_{tab_key}")
-            with fc:
-                src2    = merged if sel_c1 == '전체' else merged[merged['대분류'] == sel_c1]
-                c2_opts = ['전체'] + sorted(src2[filter2].dropna().unique().tolist())
-                sel_c2  = st.selectbox(filter2, c2_opts, key=f"c2_{tab_key}")
+            sel_c1 = '전체'
+            if fb is not None:
+                with fb:
+                    c1_opts = ['전체'] + sorted(merged['대분류'].dropna().unique().tolist())
+                    sel_c1  = st.selectbox("대분류", c1_opts, key=f"c1_{tab_key}")
+            sel_c2 = '전체'
+            if fc is not None and filter2 is not None:
+                with fc:
+                    src2    = merged if sel_c1 == '전체' else merged[merged['대분류'] == sel_c1]
+                    c2_opts = ['전체'] + sorted(src2[filter2].dropna().unique().tolist())
+                    sel_c2  = st.selectbox(filter2, c2_opts, key=f"c2_{tab_key}")
             with fd:
                 st.markdown("<div style='padding-top:28px'></div>", unsafe_allow_html=True)
                 only_qty = st.checkbox("재고만", value=False, key=f"qty_{tab_key}")
@@ -389,9 +423,9 @@ else:
             tdf = merged.copy()
             if kw:
                 tdf = tdf[tdf['품명'].str.contains(kw, na=False, case=False)]
-            if sel_c1 != '전체':
+            if sel_c1 != '전체' and '대분류' in tdf.columns:
                 tdf = tdf[tdf['대분류'] == sel_c1]
-            if sel_c2 != '전체':
+            if sel_c2 != '전체' and filter2 is not None:
                 tdf = tdf[tdf[filter2] == sel_c2]
             if only_qty:
                 tdf = tdf[tdf['재고'] > 0]
