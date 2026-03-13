@@ -154,10 +154,11 @@ for f in uploaded_files:
 if parse_errors:
     for msg in parse_errors:
         st.error(f"❌ 파싱 오류: {msg}")
+        print(f"[PARSE ERROR] {msg}")  # 터미널 출력
 
 if not all_dfs:
-    st.error("업로드된 파일에서 데이터를 읽지 못했습니다. 위 오류 메시지를 확인해주세요.")
-    raise st.StopException()
+    st.error("업로드된 파일에서 데이터를 읽지 못했습니다.")
+    st.stop()
 
 df_raw = pd.concat(all_dfs, ignore_index=True)
 qty_df = df_raw.groupby('자재코드')[['신품','구품','재고']].sum().reset_index()
