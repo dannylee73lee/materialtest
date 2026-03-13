@@ -94,12 +94,12 @@ def load_mapping_sheet(path, sheet, col_map):
 def parse_excel(file_bytes, file_name):
     buf = io.BytesIO(file_bytes)
     raw = pd.read_excel(buf, header=None)
+    # 헤더 행 탐색: '순번'이 있는 마지막 행 (2중 헤더 대응)
     header_row = 0
     for i in range(min(5, len(raw))):
         row_vals = raw.iloc[i].astype(str).tolist()
         if any('순번' in v or '자재코드' in v for v in row_vals):
             header_row = i
-            break
     buf.seek(0)
     df = pd.read_excel(buf, header=header_row)
     if len(df.columns) < 12:
@@ -107,12 +107,14 @@ def parse_excel(file_bytes, file_name):
     df = df.iloc[:, :12]
     df.columns = ['순번','사업년도','지역본부','군','업체명','자재분류',
                   '자재코드','자재명','FULL자재명','신품','구품_양호','구품_불량']
+    # 순번이 숫자인 행만 유지 (헤더 중복 행 제거)
+    df = df[pd.to_numeric(df['순번'], errors='coerce').notna()]
     df['신품']     = pd.to_numeric(df['신품'],      errors='coerce').fillna(0).astype(int)
     df['구품']     = pd.to_numeric(df['구품_양호'], errors='coerce').fillna(0).astype(int)
     df['재고']     = df['신품'] + df['구품']
     df['자재코드'] = pd.to_numeric(df['자재코드'],  errors='coerce').astype('Int64')
     df['파일명']   = file_name
-    return df.dropna(subset=['순번'])
+    return df.dropna(subset=['자재코드'])
 
 # ── 사이드바 ─────────────────────────────────────────────────────
 with st.sidebar:
